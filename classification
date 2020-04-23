@@ -1,0 +1,70 @@
+import pandas as pd
+import numpy as np
+import matplotlib.pyplot as plt
+data=pd.read_csv(r'D:\python_pycharm\machine learning\unit2\ex2data2.txt',names=['test1','test2','accepted'])
+#预先对数据作可视化处理
+'''fig,ax=plt.subplots()
+ax.scatter(data[data['accepted']==0]['test1'],data[data['accepted']==0]['test2'],label='y=0',c='r',marker='x')
+ax.scatter(data[data['accepted']==1]['test1'],data[data['accepted']==1]['test2'],label='y=1',c='b',marker='o')
+ax.set(xlabel='test1',
+       ylabel='test2')
+ax.legend()'''
+#处理线性不可分要做特征映射
+def feature_mapping(x1,x2,power):
+    data={}
+    for i in np.arange(power+1):
+        for j in np.arange(i+1):
+            data['F{}{}'.format(i-j,j)]=np.power(x1,i-j)*np.power(x2,j)
+    return pd.DataFrame(data)
+x1=data['test1']
+x2=data['test2']
+data2=feature_mapping(x1,x2,6)#注意此时打印的数据中已经包含了ones这一列
+X=data2.values
+y = data.iloc[:, -1]
+y = y.values
+y = y.reshape(len(y), 1)
+def sigmoid(z):
+    return 1/(1+np.exp(-z))
+def Costfunction(X,y,theta,lamda):
+    A=sigmoid(X@theta)
+    first=y*np.log(A)
+    second=(1-y)*np.log(1-A)
+    third=(lamda/(2*len(X)))*np.sum(np.power(theta[1:],2))#注意正则化项是从下标为1开始的
+    return -np.sum(first+second)/len(X)+third
+theta=np.zeros((28,1))
+def Graddecent(X,y,theta,alpha,iters,lamda):
+    costs=[]
+    for i in range(iters):
+        reg=(lamda/len(X))*theta[1:]
+        reg=np.insert(reg,0,values=0,axis=0)
+        theta=theta-(X.T@(sigmoid(X@theta)-y))*alpha/len(X)-reg
+        cost=Costfunction(X,y,theta,lamda)
+        costs.append(cost)
+        if i%10000==0:
+            print(cost)
+    return theta,costs
+alpha=0.001
+lamda=0.001
+iters=50000
+theta,costs=Graddecent(X,y,theta,alpha,iters,lamda)
+def predict(X,theta):
+    prob=sigmoid(X@theta)
+    return [1 if x>0.5 else 0 for x in prob]
+y_=np.array(predict(X,theta))
+y_pre=y_.reshape(len(y),1)
+acc=np.mean(y_pre==y)
+print(acc)#可信度
+x=np.linspace(-1.2,1.2,200)
+xx,yy=np.meshgrid(x,x)
+z=feature_mapping(xx.ravel(),yy.ravel(),6).values
+zz=z@theta
+zz=zz.reshape(xx.shape)
+fig,ax=plt.subplots()
+ax.scatter(data[data['accepted']==0]['test1'],data[data['accepted']==0]['test2'],label='y=0',c='r',marker='x')
+ax.scatter(data[data['accepted']==1]['test1'],data[data['accepted']==1]['test2'],label='y=1',c='b',marker='o')
+ax.legend()
+ax.set(xlabel='test1',
+       ylabel='test2')
+
+plt.contour(xx,yy,zz,0)
+plt.show()
